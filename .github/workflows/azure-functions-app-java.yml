@@ -25,7 +25,7 @@ on:
       - 'backend/**' # Solo ejecuta si se modificó algo en el backend
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'mi-casita-backend' # ← Cambia por el nombre real de tu App Service
+  AZURE_FUNCTIONAPP_NAME: 'mi-casita-backend'
   POM_XML_DIRECTORY: 'Backend/Mi casita segura - backend/Mi-casita-segura'
   DISTRIBUTION: 'zulu'
   JAVA_VERSION: '17'
@@ -45,7 +45,7 @@ jobs:
 
       - name: Build with Maven
         run: |
-          pushd ${{ env.POM_XML_DIRECTORY }}
+          pushd "${{ env.POM_XML_DIRECTORY }}"
           mvn clean package
           popd
 
@@ -54,4 +54,5 @@ jobs:
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-          package: 'Backend/Mi casita segura - backend/Mi-casita-segura/target/*.jar'
+          package: '${{ env.POM_XML_DIRECTORY }}/target/*.jar'
+
