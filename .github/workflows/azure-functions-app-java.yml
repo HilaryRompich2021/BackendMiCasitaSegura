@@ -16,43 +16,65 @@
 #
 # For more samples to get started with GitHub Action workflows to deploy to Azure: https://github.com/Azure/actions-workflow-samples/tree/master/FunctionApp
 
-name: Deploy Spring Boot backend to Azure App Service
+name: Build and deploy JAR app to Azure Web App - MiCasitaSeguraResidencial
 
 on:
   push:
-    branches: ["main"]
-    paths:
-      - 'backend/**' # Solo ejecuta si se modificó algo en el backend
-
-env:
-  AZURE_FUNCTIONAPP_NAME: 'mi-casita-backend'
-  POM_XML_DIRECTORY: "Backend/Mi casita segura - backend/Mi-casita-segura"
-  DISTRIBUTION: 'zulu'
-  JAVA_VERSION: '17'
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  build-and-deploy:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read #This is required for actions/checkout
 
-      - name: Setup Java
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java version
         uses: actions/setup-java@v4
         with:
-          distribution: ${{ env.DISTRIBUTION }}
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: '21'
+          distribution: 'microsoft'
 
       - name: Build with Maven
-        run: |
-          pushd "${{ env.POM_XML_DIRECTORY }}"
-          mvn clean package
-          popd
+        run: mvn clean install
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-app
+          path: '${{ github.workspace }}/target/*.jar'
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    permissions:
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+  
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: java-app
+      
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_DF484F535EA34EF1B5A6A75EBE688CE5 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_4F10DA91BD9247EEBA123957DCD7FEC6 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0871BB0E0CC34AF4A451858C1967A6C3 }}
 
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-          package: '${{ env.POM_XML_DIRECTORY }}/target/*.jar'
-
+          app-name: 'MiCasitaSeguraResidencial'
+          slot-name: 'Production'
+          package: '*.jar'
